@@ -2,6 +2,7 @@
 
 import sys
 import numpy as np
+import myModule
 
 #arg 1: window file
 #arg 2: true value file
@@ -19,5 +20,5 @@ outputFile     = sys.argv[4]
 
 window = myModule.readWindowSize(windowSizeFile)
 #need to check that there are at least "window" number of hours
-data = Data(trueData, predictedData)
-myModule.printError(window, data, ouputFile)
+data = myModule.Data(trueData, predictedData)
+myModule.printAverageError(window, data, ouputFile)
