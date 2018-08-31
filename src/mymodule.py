@@ -59,50 +59,71 @@ def print_average_error(window, data, output_file):
 
     with open(output_file, "w") as f:
 
-        for index in range(window):
-            count = 0
+        if (window < len(data.time_entry[0])):
+            for index in range(window):
+                count = 0
 
-            if(data.time_entry[1][index] > 0):
-                start_row += counts_dict[data.time_entry[0][index]]
-
-                for index2 in range(len(data.merged_data[0])):
-                    if (data.merged_data[0][index2] == data.time_entry[0][index]):
-                        q_error.put(data.merged_data[2][index2])
-                        count+=1
-                    elif (data.merged_data[0][index2] > data.time_entry[0][index]):
-                        break
-                q_count.put(count)
-            else:
-                q_count.put(count)
-
-        average_error = compute_average_error(q_error, q_count) #sum / float(total_count)
-        f.write(make_output_string(data.time_entry[0][0], data.time_entry[0][window-1], average_error, error_digit))
-
-        for index in range(window, len(data.time_entry[0])):
-            count = 0
-            iteration_list = range(q_count.get())
-
-            if(data.time_entry[1][index] > 0):
-                for index2 in range(start_row, len(data.merged_data[0])):
-                    if (data.merged_data[0][index2] == data.time_entry[0][index]):
-                        q_error.put(data.merged_data[2][index2])
-                        count+=1
-                    elif (data.merged_data[0][index2] > data.time_entry[0][index]):
-                        break
-
-                q_count.put(count)
-
-                if data.time_entry[0][index] in counts_dict:
+                if(data.time_entry[1][index] > 0):
                     start_row += counts_dict[data.time_entry[0][index]]
-            else:
-                q_count.put(count)
+
+                    for index2 in range(len(data.merged_data[0])):
+                        if (data.merged_data[0][index2] == data.time_entry[0][index]):
+                            q_error.put(data.merged_data[2][index2])
+                            count+=1
+                        elif (data.merged_data[0][index2] > data.time_entry[0][index]):
+                            break
+                    q_count.put(count)
+                else:
+                    q_count.put(count)
+
+            average_error = compute_average_error(q_error, q_count) #sum / float(total_count)
+            f.write(make_output_string(data.time_entry[0][0], data.time_entry[0][window-1], average_error, error_digit))
+
+            for index in range(window, len(data.time_entry[0])):
+                count = 0
+                iteration_list = range(q_count.get())
+
+                if(data.time_entry[1][index] > 0):
+                    for index2 in range(start_row, len(data.merged_data[0])):
+                        if (data.merged_data[0][index2] == data.time_entry[0][index]):
+                            q_error.put(data.merged_data[2][index2])
+                            count+=1
+                        elif (data.merged_data[0][index2] > data.time_entry[0][index]):
+                            break
+
+                    q_count.put(count)
+
+                    if data.time_entry[0][index] in counts_dict:
+                        start_row += counts_dict[data.time_entry[0][index]]
+                else:
+                    q_count.put(count)
 
 
-            for iter in iteration_list:
-                q_error.get()
+                for iter in iteration_list:
+                    q_error.get()
 
-            average_error = compute_average_error(q_error, q_count)
-            f.write(make_output_string(data.time_entry[0][index-(window-1)], data.time_entry[0][index], average_error, error_digit))
+                average_error = compute_average_error(q_error, q_count)
+                f.write(make_output_string(data.time_entry[0][index-(window-1)], data.time_entry[0][index], average_error, error_digit))
+
+        else:
+            for index in range(len(data.time_entry[0])):
+                count = 0
+
+                if(data.time_entry[1][index]>0):
+                    for index2 in range(len(data.merged_data[0])):
+                        if (data.merged_data[0][index2] == data.time_entry[0][index]):
+                            q_error.put(data.merged_data[2][index2])
+                            count+=1
+                        elif (data.merged_data[0][index2] > data.time_entry[0][index]):
+                            break
+                    q_count.put(count)
+                else:
+                    q_count.put(count)
+
+            average_error = compute_average_error(q_error, q_count) #sum / float(total_count)
+            f.write(make_output_string(data.time_entry[0][0], data.time_entry[0][len(data.time_entry[0])-1], average_error, error_digit))
+
+
 
 def read_line(row):
     """Read line from input file."""
