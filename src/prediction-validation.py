@@ -21,14 +21,16 @@ true_data        = sys.argv[2]
 predicted_data   = sys.argv[3]
 output_file      = sys.argv[4]
 
-#print true_data
-#print predicted_data
-
+# Read window size
 window = mymodule.read_window_size(window_size_file)
 if window is None:
     exit(1)
-#need to check that there are at least "window" number of hours
+
+# Read stock price data, and merge actual/predicted data
 data = mymodule.Data()
 data.merge_data(true_data, predicted_data)
+
+# Slide window through merged data and obtain average errors
 mymodule.print_average_error(window, data, output_file)
+
 print datetime.now() - startTime

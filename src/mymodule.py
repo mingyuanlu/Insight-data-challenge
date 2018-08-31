@@ -32,7 +32,7 @@ def compute_average_error(q_error, q_count):
 
     sum = np.sum(np.array(list(q_error.queue)))
     total_count = np.sum(np.array(list(q_count.queue)))
-    if total_count == 0:
+    if total_count == 0: # No match in window
         return None
     else:
         return sum / float(total_count)
@@ -40,7 +40,7 @@ def compute_average_error(q_error, q_count):
 def make_output_string(hour_start, hour_end, average_error, error_digit):
     """Generate otuput string according to the required format."""
 
-    if average_error is None:
+    if average_error is None: # No match in window
         return str(hour_start)+'|'+str(hour_end)+'|NA\n'
     else:
         temp = '{0:.'+str(error_digit)+'f}'
@@ -59,6 +59,7 @@ def print_average_error(window, data, output_file):
 
     with open(output_file, "w") as f:
 
+        # If the window is not >= data time span
         if (window < len(data.time_entry[0])):
             for index in range(window):
                 count = 0
@@ -79,6 +80,7 @@ def print_average_error(window, data, output_file):
             average_error = compute_average_error(q_error, q_count) #sum / float(total_count)
             f.write(make_output_string(data.time_entry[0][0], data.time_entry[0][window-1], average_error, error_digit))
 
+            # Slide the window
             for index in range(window, len(data.time_entry[0])):
                 count = 0
                 iteration_list = range(q_count.get())
@@ -98,14 +100,14 @@ def print_average_error(window, data, output_file):
                 else:
                     q_count.put(count)
 
-
+                # Dequeue
                 for iter in iteration_list:
                     q_error.get()
 
                 average_error = compute_average_error(q_error, q_count)
                 f.write(make_output_string(data.time_entry[0][index-(window-1)], data.time_entry[0][index], average_error, error_digit))
 
-        else:
+        else: # If the window is >= data time span, only one average to compute
             for index in range(len(data.time_entry[0])):
                 count = 0
 
@@ -172,22 +174,30 @@ class Data():
             with open(true_data_file) as ftrue:
                 ftrue_data = []
                 ftrue_hour = []
+
+                # Get actual data and its time span
                 for line in ftrue:
                     hourtrue, idtrue, pricetrue, good_line = read_line(line)
                     if(good_line):
                         ftrue_data.append(line)
                         ftrue_hour.append(hourtrue)
 
+                # The dictionary keeps track of how many rows are in each hour
                 counts_dict = make_dict(ftrue_hour)
+                # List of hours
                 time_entry.append(range(ftrue_hour[0], ftrue_hour[len(ftrue_hour)-1]+1))
+                # List of whether each hour has any matching actual/predicted pair
                 time_entry.append([0]*len(time_entry[0]))
 
                 for rowpred in fpred:
+                    # Get predicted data
                     hourpred, idpred, pricepred, good_line = read_line(rowpred)
                     if(good_line):
+                        # The existence of a predicted data entry ensures that there is a matching actual data entry, since predictions are filtered according to their confidence level, while actual data is not
                         time_entry[1][hourpred-int(time_entry[0][0])] = 1
                         passed_rows = 0
 
+                        # Data is in chronological order, so can jump to the current hour to search for match
                         for hr in range(ftrue_hour[0], hourpred):
                             if hr in counts_dict:
                                 passed_rows += counts_dict[hr]
@@ -195,12 +205,14 @@ class Data():
                         for rowtrue in ftrue_data[passed_rows:]: #the data can be assumed to be in chronological order
                             hourtrue, idtrue, pricetrue, good_line = read_line(rowtrue)
 
+                            # Locating the match
                             if(hourtrue == hourpred):
                                 if(idtrue == idpred):
                                     data[0].append(hourpred)
                                     data[1].append(idpred)
                                     data[2].append(np.fabs(pricepred-pricetrue))
 
+                            # Chronologically ordered data
                             elif hourtrue > hourpred:
                                 break
 
