@@ -47,14 +47,14 @@ a
 2. Invalid hour
 If the string stored in place of the hour entry in either the actual or predicted data is not convertible to an integer, such as
 ```
-s
+s|YYAGBD|4.31
 ```
 , then that stock entry will be skipped.
 
 3. Invalid prices
 Similar to the above case, if the price entry is not convertible to a float, such as
 ```
-8xc99
+1|YYAGBD|8xc99
 ```
 , then that stock entry will also be skipped.
 
