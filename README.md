@@ -2,7 +2,7 @@
 1. [Dependencies](README.md#dependencies)
 1. [Approach](README.md#approach)
 1. [Run Instructions](README.md#run-instructions)
-1. [Data Edge Case Handling](README.md#input-files)
+1. [Data Edge Case Handling](README.md#data-edge-case-handling)
 
 --------
 
