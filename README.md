@@ -32,6 +32,9 @@ This will use the input data from /input/. If one wishes to pass different input
 
    $ python ./src/prediction-validation.py ${PATH-TO-WINDOW-SIZE-FILE} ${PATH-TO-ACTUAL-DATA} ${PATH-TO-PREDICTED-DATA} ${PATH-TO-OUTPUT-FILE}
 
+Unit tests can be run by
+
+   $ python src/test_mymodule.py
 
 ## Data Edge Case Handling
 
@@ -58,4 +61,11 @@ Similar to the above case, if the price entry is not convertible to a float, suc
 ```
 , then that stock entry will also be skipped.
 
-4. If no matching actual and predicted stock pairs are found in a time window, the output average error for that window will be 'NA'
+4. No matched data
+If no matching actual and predicted stock pairs are found in a time window, the output average error for that window will be 'NA'
+
+5. Large time window
+If the specified time window is equal to or larger than the time span of the stock data, only one average needs to be computed, namely the average of all matching price pairs in full data. The output line will have an ending hour equal to the last hour of actual data. For example, if the time window is 5 hours, the data starts at hour = 1 and ends at hour = 3. The average error is 0.24. The output will be
+```
+1|3|0.24
+```
