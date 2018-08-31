@@ -1,166 +1,187 @@
 """Define class Data and the functions that read the window size and print out the average error to the assigned output file."""
 import numpy as np
 import Queue
+import sys
 
-def readWindowSize(windowSizeFile):
+def read_window_size(window_size_file):
     """Read the window size from file"""
-    with open(windowSizeFile) as f:
-        return int(f.read())
 
-def printAverageError(window, data, outputFile):
-    """Use queue to compute the average error from merged data and print to outputFile."""
+    with open(window_size_file) as f:
+
+        data = f.read()
+        try:
+            val = int(data)
+        except ValueError:
+            print('Window size \'{}\' not an int!'.format(data))
+            raise ValueError('Window size \'{}\' not an int!'.format(data))
+            val = None
+
+    return val
+
+
+def make_dict(list):
+    """Generate a dictionary from the list, where the key is the unique list element, and the value is the number count of the key."""
+
+    array = np.array(list)
+    unique, counts = np.unique(array, return_counts=True)
+    return dict(zip(unique, counts))
+
+
+def compute_average_error(q_error, q_count):
+    """Compute the average error as the (sum of error)/(sum of counts)."""
+
+    sum = np.sum(np.array(list(q_error.queue)))
+    total_count = np.sum(np.array(list(q_count.queue)))
+    if total_count == 0:
+        return None
+    else:
+        return sum / float(total_count)
+
+def make_output_string(hour_start, hour_end, average_error, error_digit):
+    """Generate otuput string according to the required format."""
+
+    if average_error is None:
+        return str(hour_start)+'|'+str(hour_end)+'|NA\n'
+    else:
+        temp = '{0:.'+str(error_digit)+'f}'
+        return str(hour_start)+'|'+str(hour_end)+'|'+temp.format(round(average_error,error_digit))+'\n'
+
+
+def print_average_error(window, data, output_file):
+    """Use queue to compute the average error from merged data and print to output_file."""
+
     error_digit = 2
     q_error = Queue.Queue(-1)
     q_count = Queue.Queue(window)
-    with open(outputFile, "w") as f:
+    counts_dict = make_dict(data.merged_data[0])
+
+    start_row = 0
+
+    with open(output_file, "w") as f:
 
         for index in range(window):
             count = 0
-            if(data.timeEntry[1][index] > 0):
-                for index2 in range(len(data.mergedData[0])):
-                    if (data.mergedData[0][index2] == data.timeEntry[0][index]):
-                        q_error.put(data.mergedData[2][index2])
+
+            if(data.time_entry[1][index] > 0):
+                start_row += counts_dict[data.time_entry[0][index]]
+
+                for index2 in range(len(data.merged_data[0])):
+                    if (data.merged_data[0][index2] == data.time_entry[0][index]):
+                        q_error.put(data.merged_data[2][index2])
                         count+=1
-                    elif (data.mergedData[0][index2] > data.timeEntry[0][index]):
+                    elif (data.merged_data[0][index2] > data.time_entry[0][index]):
                         break
                 q_count.put(count)
             else:
                 q_count.put(count)
 
-        sum = np.sum(np.array(list(q_error.queue)))
-        totalCount = np.sum(np.array(list(q_count.queue)))
-        averageError = sum / float(totalCount)
-        outstring = str(data.timeEntry[0][0])+'|'+str(data.timeEntry[0][window-1])+'|'+'{0:.2f}'.format(round(averageError,error_digit))+'\n'
-        f.write(outstring)
+        average_error = compute_average_error(q_error, q_count) #sum / float(total_count)
+        f.write(make_output_string(data.time_entry[0][0], data.time_entry[0][window-1], average_error, error_digit))
 
-        print window
-        print range(window, len(data.timeEntry[0]))
-        for index in range(window, len(data.timeEntry[0])):
+        for index in range(window, len(data.time_entry[0])):
             count = 0
             iteration_list = range(q_count.get())
-            #print iteration_list
-            if(data.timeEntry[1][index] > 0):
-                for index2 in range(len(data.mergedData[0])):
-                    if (data.mergedData[0][index2] == data.timeEntry[0][index]):
-                        q_error.put(data.mergedData[2][index2])
+
+            if(data.time_entry[1][index] > 0):
+                for index2 in range(start_row, len(data.merged_data[0])):
+                    if (data.merged_data[0][index2] == data.time_entry[0][index]):
+                        q_error.put(data.merged_data[2][index2])
                         count+=1
-                    elif (data.mergedData[0][index2] > data.timeEntry[0][index]):
+                    elif (data.merged_data[0][index2] > data.time_entry[0][index]):
                         break
-                #print 'count: %d' % count
+
                 q_count.put(count)
-                #print 'I\'m here'
-                #iteration_list = range(q_count.get())
-                #print iteration_list
-                #for iteration in iteration_list:
-                #    q_error.get()
+
+                if data.time_entry[0][index] in counts_dict:
+                    start_row += counts_dict[data.time_entry[0][index]]
             else:
                 q_count.put(count)
 
-            #q_count.get()
+
             for iter in iteration_list:
                 q_error.get()
 
-            sum = np.sum(np.array(list(q_error.queue)))
-            totalCount = np.sum(np.array(list(q_count.queue)))
-            averageError = sum / float(totalCount)
-            outstring = str(data.timeEntry[0][index-(window-1)])+'|'+str(data.timeEntry[0][index])+'|'+'{0:.2f}'.format(round(averageError,error_digit))+'\n'
-            #print outstring
-            f.write(outstring)
+            average_error = compute_average_error(q_error, q_count)
+            f.write(make_output_string(data.time_entry[0][index-(window-1)], data.time_entry[0][index], average_error, error_digit))
+
+def read_line(row):
+    """Read line from input file."""
+
+    good_line = True # If True, this line contains valid data. Else, this line is skipped.
+    data = row.rstrip().split('|')
+
+    try:
+        val = int(data[0])
+    except ValueError:
+        print("First column is not an int! This row will be skipped.")
+        good_line = False
+        #raise ValueError("First column is not an int! This row will be skipped.")
+
+    try:
+        val = float(data[2])
+    except ValueError:
+        print("Third column is not a float! This row will be skipped.")
+        good_line = False
+        #raise ValueError("Third column is not a float! This row will be skipped.")
+
+    if (good_line):
+        return [int(data[0]), data[1], float(data[2]), good_line]
+    else:
+        return [None, None, None, good_line]
 
 
 class Data():
     """Read input data and merge data to a common table."""
 
-    def __init__(self, trueDataFile, predictedDataFile):
-        #self.trueDataFile = trueDataFile
-        #self.predictedDataFile = predictedDataFile
-        #trueData = readData(trueDataFile)
-        #predictedData = readData(predictedDataFile)
-        #timeEntry = getTimeEntry(predictedDataFile)
-        self.mergedData, self.timeEntry = self.mergeData(trueDataFile, predictedDataFile)
+    def __init__(self):
+        pass
+        #self.merged_data = []
+        #self.time_entry  = []
+        #self.merge_data(true_data_file, predicted_data_file)
 
-    '''
-    def readData(dataFile):
-        """Read input text data delimited by "|"."""
-        data = [[],[],[]]
-        with open(dataFile) as f:
-            for row in f:
-                d = row.rstrip().split('|')
-                data[0].append(d[0])
-                data[1].append(d[1])
-                data[2].append(d[2])
 
-        return data
-    '''
-
-    def mergeData(self, trueDataFile, predictedDataFile):
+    def merge_data(self, true_data_file, predicted_data_file):
         """Merge data from true and predicted tables into one single table, effectively doing a left merge (left being predicted)."""
 
-        timeEntry = []
-        #timeEntry.append([])
-        #timeEntry.append([])
+        time_entry = []
         data = [[],[],[]]
         start_row = 0
-        with open(predictedDataFile) as fpred:
-            with open(trueDataFile) as ftrue:
-                #print ftrue
-                ftrue_data = [line for line in ftrue]
-                print ftrue_data
-                ftrue_hour = [int(line.split('|')[0]) for line in ftrue_data]
-                print ftrue_hour
-                ftrue_hour_array = np.array(ftrue_hour)
-                unique, counts = np.unique(ftrue_hour_array, return_counts=True)
-                counts_dict = dict(zip(unique, counts))
-                print counts_dict
-                #print ftrue_hour[0]
-                #print ftrue_hour[len(ftrue_hour)-1]
-                #print range(ftrue_hour[0], ftrue_hour[len(ftrue_hour)-1]+1)
-                timeEntry.append(range(ftrue_hour[0], ftrue_hour[len(ftrue_hour)-1]+1))
-                timeEntry.append([0]*len(timeEntry[0]))
-                print timeEntry
-                #this_hour = -1
+
+        with open(predicted_data_file) as fpred:
+            with open(true_data_file) as ftrue:
+                ftrue_data = []
+                ftrue_hour = []
+                for line in ftrue:
+                    hourtrue, idtrue, pricetrue, good_line = read_line(line)
+                    if(good_line):
+                        ftrue_data.append(line)
+                        ftrue_hour.append(hourtrue)
+
+                counts_dict = make_dict(ftrue_hour)
+                time_entry.append(range(ftrue_hour[0], ftrue_hour[len(ftrue_hour)-1]+1))
+                time_entry.append([0]*len(time_entry[0]))
+
                 for rowpred in fpred:
-                    dpred = rowpred.rstrip().split('|')
-                    hourpred  = int(dpred[0])
-                    idpred    = dpred[1]
-                    pricepred = float(dpred[2])
-                    timeEntry[1][hourpred-int(timeEntry[0][0])] = 1
-                    #if(this_hour < hourpred):
-                    #    this_hour = hourpred
-                    passed_rows = 0
-                    for hr in range(ftrue_hour[0], hourpred):
-                        passed_rows += counts_dict[hr]
-                    #print "passed_rows: %d" % passed_rows
+                    hourpred, idpred, pricepred, good_line = read_line(rowpred)
+                    if(good_line):
+                        time_entry[1][hourpred-int(time_entry[0][0])] = 1
+                        passed_rows = 0
 
-                    for rowtrue in ftrue_data[passed_rows:]: #the data can be assumed to be in chronological order
-                        dtrue = rowtrue.rstrip().split('|')
-                        hourtrue  = int(dtrue[0])
-                        idtrue    = dtrue[1]
-                        pricetrue = float(dtrue[2])
-                        #start_row += 1
-                        if(hourtrue == hourpred):
-                            if(idtrue == idpred):
-                                data[0].append(hourpred)
-                                data[1].append(idpred)
-                                data[2].append(np.fabs(pricepred-pricetrue))
-                        elif hourtrue > hourpred:
-                            break
-        print data
-        print timeEntry
-        return [data, timeEntry]
+                        for hr in range(ftrue_hour[0], hourpred):
+                            if hr in counts_dict:
+                                passed_rows += counts_dict[hr]
 
-'''
-Class Queue():
-    """Queue input data with a fixed time range specified by "window"."""
+                        for rowtrue in ftrue_data[passed_rows:]: #the data can be assumed to be in chronological order
+                            hourtrue, idtrue, pricetrue, good_line = read_line(rowtrue)
 
-    def __init__():
+                            if(hourtrue == hourpred):
+                                if(idtrue == idpred):
+                                    data[0].append(hourpred)
+                                    data[1].append(idpred)
+                                    data[2].append(np.fabs(pricepred-pricetrue))
 
-        self.price = []
-        """
-        sum = 0.
-        count = 0
-        for index in range(start_index, start_index+window):
-            if(data.timEntry[1][index]):
-                for id in data.mergedData[1]
-        """
-'''
+                            elif hourtrue > hourpred:
+                                break
+
+        self.merged_data = data
+        self.time_entry  = time_entry
